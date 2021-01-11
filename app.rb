@@ -65,6 +65,7 @@ class HbConsumer < Sinatra::Base
 
     # save the access token in the session. Could put this in a cookie.
     session[:access_token] = access_token.token
+    # The refresh token would be also available on `access_token.refresh_token`
 
     @message = "Successfully authenticated with the server"
     erb :success
