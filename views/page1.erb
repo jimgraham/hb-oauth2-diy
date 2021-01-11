@@ -1,5 +1,11 @@
-<h1>Page #1</h1>
+<h1>Your Information</h1>
 
-<%=@message.inspect%>
+<% @message.each do |key,value| %>
+    <p>
+        <strong><%= key %>:</strong> <%= value %>
+    </p>
+<% end %>
 
-<a href="/page_2">Verify if session persists</a>
+<p>
+    <a href="/page_2">Verify if session persists</a>
+</p>

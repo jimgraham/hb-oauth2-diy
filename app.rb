@@ -48,18 +48,19 @@ class HbConsumer < Sinatra::Base
 
   # Build to get email / profile data
   get '/page_2' do
-    @message = get_response('data.json')
+    @message = get_response('userinfo')
     erb :success
   end
   get '/page_1' do
-    @message = get_response('data.json')
+    @message = get_response('userinfo')
     erb :page1
   end
 
   def get_response(url)
+    #binding.pry
     access_token = OAuth2::AccessToken.new(client, session[:access_token])
-    p access_token
-    JSON.parse(access_token.get("/api/v1/#{url}").body)
+
+    JSON.parse(access_token.get("/oauth/#{url}").body)
   end
 
   def redirect_uri
