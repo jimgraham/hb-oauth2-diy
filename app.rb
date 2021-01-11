@@ -1,4 +1,5 @@
 require 'sinatra/base'
+require 'sinatra/flash'
 require 'webrick'
 require 'webrick/https'
 require 'openssl'
@@ -7,15 +8,22 @@ require 'json'
 require 'pry'
 
 class HbConsumer < Sinatra::Base
+
   configure do
     enable :sessions
+    register Sinatra::Flash
     set :bind, '0.0.0.0'
     set :port, 8888
     set :force_ssl, true
   end
 
+  # The scopes requested from Shopify Identity.
+  # If we do not provide SCOPES we will get an error.
   SCOPES = "email openid profile"
 
+  # A client that talks to Shopify Identity. We make connections via
+  # `client.auth_code.` "Authorization Code" is a specific type of flow
+  # in the OAuth spec.
   def client
     OAuth2::Client.new(
       ENV["CLIENT_ID"],
@@ -25,6 +33,11 @@ class HbConsumer < Sinatra::Base
     )
   end
 
+  get "/" do
+    erb :intro
+  end
+
+  # Redirect to Shopify for login / signup
   get "/auth/test" do
     redirect client.auth_code.authorize_url(
       :scope => SCOPES,
@@ -32,32 +45,48 @@ class HbConsumer < Sinatra::Base
     )
   end
 
+  # Shopify calls this route with a temporary access code that 
+  # we can exchange for an access token
+  # We store the access_token in the session. Could put it in a cookie
   get '/oauth2callback/data' do
-    # binding.pry
-    
-    # need error handling here.
+    # look if Shopify returns an error to us in
+    # the `error` or `error_description` query params
+    if params[:error]
+      flash[:error] = "We received an Error:\n #{params[:error]} #{params[:error_description]}"
+      redirect "/"
+    end
+
+    # exchange the temp code for an access token.
     access_token = client.auth_code.get_token(
       params[:code],
       :scope => SCOPES,
       :redirect_uri => redirect_uri
     )
+
+    # save the access token in the session. Could put this in a cookie.
     session[:access_token] = access_token.token
+
     @message = "Successfully authenticated with the server"
     erb :success
   end
 
-  # Build to get email / profile data
+  # To show what this can do, we fetch information about the user.
+  #
+  # fetch from accounts.shopify.com/oauth/userinfo to get the information
+  # for the User that just signed in.
   get '/page_2' do
     @message = get_response('userinfo')
     erb :success
   end
+
   get '/page_1' do
     @message = get_response('userinfo')
     erb :page1
   end
 
+  private
+
   def get_response(url)
-    #binding.pry
     access_token = OAuth2::AccessToken.new(client, session[:access_token])
 
     JSON.parse(access_token.get("/oauth/#{url}").body)
@@ -71,6 +100,8 @@ class HbConsumer < Sinatra::Base
   end
 end
 
+
+# This sets up the server to run SSL
 WEBAPP_ROOT = File.expand_path File.dirname(__FILE__)
 
 webrick_options = {
