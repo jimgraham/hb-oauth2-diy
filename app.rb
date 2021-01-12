@@ -57,7 +57,7 @@ class HbConsumer < Sinatra::Base
     auth_error = params[:error]
     if auth_error
       # check for login error
-      if auth_error = "login_required"
+      if auth_error == "login_required"
         # redirect asking for chance to login.
         redirect client.auth_code.authorize_url(
           :scope => SCOPES,
