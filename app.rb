@@ -38,8 +38,11 @@ class HbConsumer < Sinatra::Base
   end
 
   # Redirect to Shopify for login / signup
+  # 
   get "/auth/test" do
+    # the prompt=none says "don't prompt, see if the user is already logged in"
     redirect client.auth_code.authorize_url(
+      :prompt => "none",
       :scope => SCOPES,
       :redirect_uri => redirect_uri
     )
@@ -51,8 +54,18 @@ class HbConsumer < Sinatra::Base
   get '/oauth2callback/data' do
     # look if Shopify returns an error to us in
     # the `error` or `error_description` query params
-    if params[:error]
-      flash[:error] = "We received an Error:\n #{params[:error]} #{params[:error_description]}"
+    auth_error = params[:error]
+    if auth_error
+      # check for login error
+      if auth_error = "login_required"
+        # redirect asking for chance to login.
+        redirect client.auth_code.authorize_url(
+          :scope => SCOPES,
+          :redirect_uri => redirect_uri
+        )
+      end
+
+      flash[:error] = "We received an Error:\n #{auth_error} #{params[:error_description]}"
       redirect "/"
     end
 
